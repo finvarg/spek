@@ -643,7 +643,10 @@ void SpekSpectrogram::render(wxDC& dc)
         }
     }
 
-    // Border around the spectrogram.
+    // Border around the spectrogram. The overview thumb leaves a solid brush
+    // selected, so restore the transparent brush before drawing this rectangle.
+    dc.SetPen(*wxWHITE_PEN);
+    dc.SetBrush(*wxTRANSPARENT_BRUSH);
     dc.DrawRectangle(LPAD, TPAD, w - LPAD - RPAD, h - TPAD - BPAD);
 
     // The palette.
