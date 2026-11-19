@@ -592,8 +592,8 @@ void SpekSpectrogram::render(wxDC& dc)
             this->overview_thumb_x = thumb_x;
             this->overview_thumb_width = thumb_width;
 
-            // Temporary diagnostic marker for the custom build.
-            dc.SetPen(wxPen(wxColour(0, 128, 255), FromDIP(1)));
+            // Draw the minimap outline.
+            dc.SetPen(wxPen(wxColour(255, 255, 255), FromDIP(1)));
             dc.SetBrush(wxBrush(wxColour(16, 16, 16)));
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
