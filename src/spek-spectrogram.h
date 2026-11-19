@@ -25,6 +25,9 @@ private:
     void on_paint(wxPaintEvent& evt);
     void on_size(wxSizeEvent& evt);
     void on_mouse_wheel(wxMouseEvent& evt);
+    void on_left_down(wxMouseEvent& evt);
+    void on_left_up(wxMouseEvent& evt);
+    void on_motion(wxMouseEvent& evt);
     void on_left_dclick(wxMouseEvent& evt);
     void on_have_sample(SpekHaveSampleEvent& evt);
     void render(wxDC& dc);
@@ -47,6 +50,10 @@ private:
     double duration;
     double view_start;
     double view_duration;
+    bool dragging;
+    int drag_start_x;
+    double drag_start_view;
+    int drag_offset_x;
     int sample_rate;
     enum palette palette;
     wxImage palette_image;
