@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstdio>
 
 #include <wx/dcbuffer.h>
 
@@ -54,9 +55,17 @@ SpekSpectrogram::SpekSpectrogram(wxFrame *parent) :
     view_start(0.0),
     view_duration(0.0),
     dragging(false),
+    overview_dragging(false),
     drag_start_x(0),
     drag_start_view(0.0),
     drag_offset_x(0),
+    overview_x(0),
+    overview_y(0),
+    overview_width(0),
+    overview_height(0),
+    overview_thumb_x(0),
+    overview_thumb_width(0),
+    overview_grab_offset(0),
     sample_rate(0),
     palette(PALETTE_DEFAULT),
     palette_image(),
@@ -241,12 +250,30 @@ void SpekSpectrogram::on_mouse_wheel(wxMouseEvent& event)
 
 void SpekSpectrogram::on_left_down(wxMouseEvent& event)
 {
+    wxPoint point = event.GetPosition();
+    if (this->duration > 0.0 && this->view_duration < this->duration &&
+        this->overview_width > 0 &&
+        point.x >= this->overview_x && point.x < this->overview_x + this->overview_width &&
+        point.y >= this->overview_y && point.y < this->overview_y + this->overview_height) {
+        this->overview_grab_offset =
+            point.x >= this->overview_thumb_x &&
+            point.x < this->overview_thumb_x + this->overview_thumb_width
+            ? point.x - this->overview_thumb_x
+            : this->overview_thumb_width / 2;
+        this->overview_dragging = true;
+        this->drag_start_x = point.x;
+        this->drag_start_view = this->view_start;
+        CaptureMouse();
+        SetCursor(wxCursor(wxCURSOR_HAND));
+        set_overview_position(point.x);
+        return;
+    }
+
     if (this->duration <= 0.0 || this->view_duration >= this->duration) {
         event.Skip();
         return;
     }
 
-    wxPoint point = event.GetPosition();
     int plot_width = GetClientSize().GetWidth() - LPAD - RPAD;
     if (plot_width <= 0 || point.x < LPAD || point.x > LPAD + plot_width ||
         point.y < TPAD || point.y > GetClientSize().GetHeight() - BPAD) {
@@ -264,6 +291,18 @@ void SpekSpectrogram::on_left_down(wxMouseEvent& event)
 
 void SpekSpectrogram::on_left_up(wxMouseEvent& event)
 {
+    if (this->overview_dragging) {
+        this->overview_dragging = false;
+        if (HasCapture()) {
+            ReleaseMouse();
+        }
+        SetCursor(wxCursor(wxCURSOR_ARROW));
+        this->drag_offset_x = 0;
+        start();
+        Refresh();
+        return;
+    }
+
     if (!this->dragging) {
         event.Skip();
         return;
@@ -285,6 +324,11 @@ void SpekSpectrogram::on_left_up(wxMouseEvent& event)
 
 void SpekSpectrogram::on_motion(wxMouseEvent& event)
 {
+    if (this->overview_dragging) {
+        set_overview_position(event.GetX());
+        return;
+    }
+
     if (!this->dragging) {
         event.Skip();
         return;
@@ -307,6 +351,30 @@ void SpekSpectrogram::on_motion(wxMouseEvent& event)
     Refresh(false);
 }
 
+void SpekSpectrogram::set_overview_position(int x)
+{
+    int inner_width = this->overview_width - 2;
+    int travel = inner_width - this->overview_thumb_width;
+    double max_start = this->duration - this->view_duration;
+    if (inner_width <= 0 || travel <= 0 || max_start <= 0.0) {
+        return;
+    }
+
+    int thumb_x = x - this->overview_grab_offset;
+    thumb_x = spek_max(this->overview_x + 1,
+        spek_min(thumb_x, this->overview_x + 1 + travel));
+    double position = (thumb_x - this->overview_x - 1) / (double)travel;
+    this->view_start = position * max_start;
+
+    int plot_width = GetClientSize().GetWidth() - LPAD - RPAD;
+    if (plot_width > 0 && this->view_duration > 0.0) {
+        this->drag_offset_x = (int)round(
+            (this->drag_start_view - this->view_start) * plot_width / this->view_duration
+        );
+    }
+    Refresh(false);
+}
+
 void SpekSpectrogram::on_left_dclick(wxMouseEvent& event)
 {
     wxPoint point = event.GetPosition();
@@ -324,6 +392,11 @@ void SpekSpectrogram::on_have_sample(SpekHaveSampleEvent& event)
     int bands = event.get_bands();
     int sample = event.get_sample();
     const float *values = event.get_values();
+    if (sample == 0 && values) {
+        std::fprintf(stderr,
+            "Spek diagnostic: UI received sample 0, bands=%d, bins[0]=%g, bins[mid]=%g\\n",
+            bands, values[0], values[bands / 2]);
+    }
 
     if (sample == -1) {
         this->stop();
@@ -367,6 +440,8 @@ static wxString density_formatter(int unit)
 
 void SpekSpectrogram::render(wxDC& dc)
 {
+    this->overview_width = 0;
+    this->overview_height = 0;
     wxSize size = GetClientSize();
     int w = size.GetWidth();
     int h = size.GetHeight();
@@ -468,6 +543,12 @@ void SpekSpectrogram::render(wxDC& dc)
             int thumb_x = overview_x + 1 + (int)round(
                 position * (inner_width - thumb_width)
             );
+            this->overview_x = overview_x;
+            this->overview_y = overview_y;
+            this->overview_width = overview_width;
+            this->overview_height = overview_height;
+            this->overview_thumb_x = thumb_x;
+            this->overview_thumb_width = thumb_width;
 
             dc.SetPen(wxPen(wxColour(200, 200, 200)));
             dc.SetBrush(wxBrush(wxColour(16, 16, 16)));
@@ -567,6 +648,11 @@ void SpekSpectrogram::render(wxDC& dc)
 
 static void pipeline_cb(int bands, int sample, float *values, void *cb_data)
 {
+    if (sample == 0 && values) {
+        std::fprintf(stderr,
+            "Spek diagnostic: pipeline sample 0, bands=%d, bins[0]=%g, bins[mid]=%g\\n",
+            bands, values[0], values[bands / 2]);
+    }
     SpekHaveSampleEvent event(bands, sample, values, false);
     SpekSpectrogram *s = (SpekSpectrogram *)cb_data;
     wxPostEvent(s, event);
