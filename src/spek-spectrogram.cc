@@ -262,6 +262,7 @@ void SpekSpectrogram::on_left_down(wxMouseEvent& event)
         this->overview_dragging = true;
         this->drag_start_x = point.x;
         this->drag_start_view = this->view_start;
+        SetFocus();
         CaptureMouse();
         SetCursor(wxCursor(wxCURSOR_HAND));
         set_overview_position(point.x);
@@ -284,6 +285,7 @@ void SpekSpectrogram::on_left_down(wxMouseEvent& event)
     this->drag_start_x = point.x;
     this->drag_start_view = this->view_start;
     this->drag_offset_x = 0;
+    SetFocus();
     CaptureMouse();
     SetCursor(wxCursor(wxCURSOR_HAND));
 }
@@ -325,6 +327,7 @@ void SpekSpectrogram::on_motion(wxMouseEvent& event)
 {
     if (this->overview_dragging) {
         set_overview_position(event.GetX());
+        Update();
         return;
     }
 
@@ -347,7 +350,8 @@ void SpekSpectrogram::on_motion(wxMouseEvent& event)
     this->drag_offset_x = (int)round(
         (this->drag_start_view - this->view_start) * plot_width / this->view_duration
     );
-    Refresh(false);
+    Refresh();
+    Update();
 }
 
 void SpekSpectrogram::set_overview_position(int x)
@@ -371,7 +375,8 @@ void SpekSpectrogram::set_overview_position(int x)
             (this->drag_start_view - this->view_start) * plot_width / this->view_duration
         );
     }
-    Refresh(false);
+    Refresh();
+    Update();
 }
 
 void SpekSpectrogram::on_left_dclick(wxMouseEvent& event)
@@ -574,7 +579,7 @@ void SpekSpectrogram::render(wxDC& dc)
             this->overview_thumb_width = thumb_width;
 
             // Temporary diagnostic marker for the custom build.
-            dc.SetPen(wxPen(wxColour(0, 255, 0), FromDIP(1)));
+            dc.SetPen(wxPen(wxColour(0, 128, 255), FromDIP(1)));
             dc.SetBrush(wxBrush(wxColour(16, 16, 16)));
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
