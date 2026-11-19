@@ -1,6 +1,4 @@
 #include <cmath>
-#include <cstdarg>
-#include <cstdio>
 
 #include <wx/dcbuffer.h>
 
@@ -34,22 +32,6 @@ enum
     MIN_FFT_BITS = 8,
     MAX_FFT_BITS = 14,
 };
-
-// Temporary diagnostic log for the Windows GUI build.
-static void diagnostic_log(const char *format, ...)
-{
-    FILE *file = std::fopen("spek-diagnostic.log", "a");
-    if (!file) {
-        return;
-    }
-
-    va_list args;
-    va_start(args, format);
-    std::vfprintf(file, format, args);
-    va_end(args);
-    std::fputc('\n', file);
-    std::fclose(file);
-}
 
 // Forward declarations.
 static wxString trim(wxDC& dc, const wxString& s, int length, bool trim_end);
@@ -88,7 +70,6 @@ SpekSpectrogram::SpekSpectrogram(wxFrame *parent) :
     palette_image(),
     image(1, 1),
     prev_width(-1),
-    samples_received(0),
     fft_bits(FFT_BITS),
     urange(URANGE),
     lrange(LRANGE),
@@ -113,11 +94,6 @@ SpekSpectrogram::~SpekSpectrogram()
 
 void SpekSpectrogram::open(const wxString& path)
 {
-    FILE *file = std::fopen("spek-diagnostic.log", "w");
-    if (file) {
-        std::fclose(file);
-    }
-    diagnostic_log("open file: %s", (const char *)path.utf8_str());
     this->path = path;
     this->view_start = 0.0;
     this->view_duration = 0.0;
@@ -415,22 +391,11 @@ void SpekSpectrogram::on_have_sample(SpekHaveSampleEvent& event)
     int bands = event.get_bands();
     int sample = event.get_sample();
     const float *values = event.get_values();
-    if (sample == 0 && values) {
-        diagnostic_log("UI received sample 0: bands=%d bins[0]=%g bins[mid]=%g",
-            bands, values[0], values[bands / 2]);
-    }
-
     if (sample == -1) {
-        bool saved = this->image.SaveFile("spek-image-diagnostic.png", wxBITMAP_TYPE_PNG);
-        diagnostic_log(
-            "UI finished: received=%d image=%dx%d raw_png_saved=%d",
-            this->samples_received, this->image.GetWidth(), this->image.GetHeight(), saved
-        );
         this->stop();
         return;
     }
 
-    this->samples_received++;
     // TODO: check image size, quit if wrong.
     double range = this->urange - this->lrange;
     for (int y = 0; y < bands; y++) {
@@ -679,12 +644,6 @@ void SpekSpectrogram::render(wxDC& dc)
 
 static void pipeline_cb(int bands, int sample, float *values, void *cb_data)
 {
-    if (sample == 0 && values) {
-        diagnostic_log("pipeline sample 0: bands=%d bins[0]=%g bins[mid]=%g",
-            bands, values[0], values[bands / 2]);
-    } else if (sample == -1) {
-        diagnostic_log("pipeline finished");
-    }
     SpekHaveSampleEvent event(bands, sample, values, false);
     SpekSpectrogram *s = (SpekSpectrogram *)cb_data;
     wxPostEvent(s, event);
@@ -697,7 +656,6 @@ void SpekSpectrogram::start()
     }
 
     this->stop();
-    diagnostic_log("start: view_start=%.3f view_duration=%.3f", this->view_start, this->view_duration);
 
     // The number of samples is the number of pixels available for the image.
     // The number of bands is fixed, FFT results are very different for
@@ -705,7 +663,6 @@ void SpekSpectrogram::start()
     wxSize size = GetClientSize();
     int samples = size.GetWidth() - LPAD - RPAD;
     if (samples > 0) {
-        this->samples_received = 0;
         this->image.Create(samples, bits_to_bands(this->fft_bits));
         this->pipeline = spek_pipeline_open(
             this->audio->open(std::string(this->path.utf8_str()), this->stream),
