@@ -16,6 +16,9 @@ BEGIN_EVENT_TABLE(SpekSpectrogram, wxWindow)
     EVT_PAINT(SpekSpectrogram::on_paint)
     EVT_SIZE(SpekSpectrogram::on_size)
     EVT_MOUSEWHEEL(SpekSpectrogram::on_mouse_wheel)
+    EVT_LEFT_DOWN(SpekSpectrogram::on_left_down)
+    EVT_LEFT_UP(SpekSpectrogram::on_left_up)
+    EVT_MOTION(SpekSpectrogram::on_motion)
     EVT_LEFT_DCLICK(SpekSpectrogram::on_left_dclick)
 END_EVENT_TABLE()
 
@@ -50,6 +53,10 @@ SpekSpectrogram::SpekSpectrogram(wxFrame *parent) :
     duration(0.0),
     view_start(0.0),
     view_duration(0.0),
+    dragging(false),
+    drag_start_x(0),
+    drag_start_view(0.0),
+    drag_offset_x(0),
     sample_rate(0),
     palette(PALETTE_DEFAULT),
     palette_image(),
@@ -232,6 +239,74 @@ void SpekSpectrogram::on_mouse_wheel(wxMouseEvent& event)
     Refresh();
 }
 
+void SpekSpectrogram::on_left_down(wxMouseEvent& event)
+{
+    if (this->duration <= 0.0 || this->view_duration >= this->duration) {
+        event.Skip();
+        return;
+    }
+
+    wxPoint point = event.GetPosition();
+    int plot_width = GetClientSize().GetWidth() - LPAD - RPAD;
+    if (plot_width <= 0 || point.x < LPAD || point.x > LPAD + plot_width ||
+        point.y < TPAD || point.y > GetClientSize().GetHeight() - BPAD) {
+        event.Skip();
+        return;
+    }
+
+    this->dragging = true;
+    this->drag_start_x = point.x;
+    this->drag_start_view = this->view_start;
+    this->drag_offset_x = 0;
+    CaptureMouse();
+    SetCursor(wxCursor(wxCURSOR_HAND));
+}
+
+void SpekSpectrogram::on_left_up(wxMouseEvent& event)
+{
+    if (!this->dragging) {
+        event.Skip();
+        return;
+    }
+
+    this->dragging = false;
+    if (HasCapture()) {
+        ReleaseMouse();
+    }
+    SetCursor(wxCursor(wxCURSOR_ARROW));
+
+    bool moved = this->drag_offset_x != 0;
+    this->drag_offset_x = 0;
+    if (moved) {
+        start();
+        Refresh();
+    }
+}
+
+void SpekSpectrogram::on_motion(wxMouseEvent& event)
+{
+    if (!this->dragging) {
+        event.Skip();
+        return;
+    }
+
+    int plot_width = GetClientSize().GetWidth() - LPAD - RPAD;
+    if (plot_width <= 0 || this->view_duration <= 0.0) {
+        return;
+    }
+
+    int delta_x = event.GetX() - this->drag_start_x;
+    double next_start = this->drag_start_view -
+        delta_x * this->view_duration / plot_width;
+    this->view_start = spek_max(
+        0.0, spek_min(next_start, this->duration - this->view_duration)
+    );
+    this->drag_offset_x = (int)round(
+        (this->drag_start_view - this->view_start) * plot_width / this->view_duration
+    );
+    Refresh(false);
+}
+
 void SpekSpectrogram::on_left_dclick(wxMouseEvent& event)
 {
     wxPoint point = event.GetPosition();
@@ -343,7 +418,9 @@ void SpekSpectrogram::render(wxDC& dc)
         w - LPAD - RPAD > 0 && h - TPAD - BPAD > 0) {
         // Draw the spectrogram.
         wxBitmap bmp(this->image.Scale(w - LPAD - RPAD, h - TPAD - BPAD));
-        dc.DrawBitmap(bmp, LPAD, TPAD);
+        dc.SetClippingRegion(LPAD, TPAD, w - LPAD - RPAD, h - TPAD - BPAD);
+        dc.DrawBitmap(bmp, LPAD + this->drag_offset_x, TPAD);
+        dc.DestroyClippingRegion();
 
         // File name.
         dc.SetFont(large_font);
