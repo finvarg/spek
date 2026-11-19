@@ -68,6 +68,7 @@ private:
     wxImage palette_image;
     wxImage image;
     int prev_width;
+    int samples_received;
     int fft_bits;
     int urange;
     int lrange;
