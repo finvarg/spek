@@ -275,7 +275,7 @@ void SpekSpectrogram::on_left_up(wxMouseEvent& event)
     }
     SetCursor(wxCursor(wxCURSOR_ARROW));
 
-    bool moved = this->drag_offset_x != 0;
+    bool moved = this->view_start != this->drag_start_view;
     this->drag_offset_x = 0;
     if (moved) {
         start();
