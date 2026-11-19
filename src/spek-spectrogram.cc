@@ -17,7 +17,6 @@ BEGIN_EVENT_TABLE(SpekSpectrogram, wxWindow)
     EVT_SIZE(SpekSpectrogram::on_size)
     EVT_MOUSEWHEEL(SpekSpectrogram::on_mouse_wheel)
     EVT_LEFT_DCLICK(SpekSpectrogram::on_left_dclick)
-    SPEK_EVT_HAVE_SAMPLE(SpekSpectrogram::on_have_sample)
 END_EVENT_TABLE()
 
 enum
@@ -70,6 +69,7 @@ SpekSpectrogram::SpekSpectrogram(wxFrame *parent) :
 
     SetBackgroundStyle(wxBG_STYLE_CUSTOM);
     SetFocus();
+    Bind(SPEK_HAVE_SAMPLE, &SpekSpectrogram::on_have_sample, this);
 }
 
 SpekSpectrogram::~SpekSpectrogram()
