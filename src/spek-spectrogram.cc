@@ -606,7 +606,7 @@ void SpekSpectrogram::render(wxDC& dc)
 
             // Redraw the outline over the thumb so the viewport meets the
             // right border cleanly despite wxDC rectangle edge conventions.
-            dc.SetPen(wxPen(wxColour(0, 255, 255), FromDIP(1)));
+            dc.SetPen(wxPen(wxColour(255, 255, 255), FromDIP(1)));
             dc.SetBrush(*wxTRANSPARENT_BRUSH);
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
