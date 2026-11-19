@@ -572,10 +572,19 @@ void SpekSpectrogram::render(wxDC& dc)
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
             dc.SetPen(wxPen(wxColour(245, 245, 245)));
-            dc.SetBrush(wxBrush(wxColour(245, 245, 245)));
-            dc.DrawRectangle(
-                thumb_x, overview_y + 1, thumb_width, inner_height
-            );
+            if (thumb_width == inner_width) {
+                // At 1.0x the viewport covers the whole track. Keep it outlined
+                // so the overview remains a visible control instead of a solid bar.
+                dc.SetBrush(*wxTRANSPARENT_BRUSH);
+                dc.DrawRectangle(
+                    thumb_x, overview_y + 1, thumb_width, inner_height
+                );
+            } else {
+                dc.SetBrush(wxBrush(wxColour(245, 245, 245)));
+                dc.DrawRectangle(
+                    thumb_x, overview_y + 1, thumb_width, inner_height
+                );
+            }
 
             dc.SetFont(small_font);
             int label_width = dc.GetTextExtent(zoom_label).GetWidth();
