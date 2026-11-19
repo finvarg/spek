@@ -257,7 +257,7 @@ void AudioFileImpl::start(int channel, int samples, double start_time, double du
     this->start_timestamp =
         stream->start_time == AV_NOPTS_VALUE ? 0 : stream->start_time;
     this->start_timestamp += av_rescale_q(
-        (int64_t)(start_time * AV_TIME_BASE), AV_TIME_BASE_Q, stream->time_base
+        (int64_t)(start_time * AV_TIME_BASE), AVRational{1, AV_TIME_BASE}, stream->time_base
     );
 
     if (start_time > 0.0) {
