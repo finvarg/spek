@@ -291,6 +291,10 @@ void SpekSpectrogram::on_left_down(wxMouseEvent& event)
 void SpekSpectrogram::on_left_up(wxMouseEvent& event)
 {
     if (this->overview_dragging) {
+        // The final mouse-up position can be one pixel beyond the last motion
+        // event. Apply it before restarting the pipeline so the thumb cannot
+        // spring back to the previous motion coordinate.
+        set_overview_position(event.GetX());
         this->overview_dragging = false;
         if (HasCapture()) {
             ReleaseMouse();
