@@ -526,45 +526,25 @@ void SpekSpectrogram::render(wxDC& dc)
             const int inner_width = overview_width - 2;
             const int inner_height = overview_height - 2;
             const double max_start = this->duration - this->view_duration;
-            // Snap offsets smaller than one overview pixel to the edge.
-            // This matches the thumb's pixel resolution and avoids a one-pixel gap.
-            const double edge_tolerance =
-                this->duration / inner_width;
-            const bool at_start = this->view_start <= edge_tolerance;
-            const bool at_end = max_start - this->view_start <= edge_tolerance;
 
-            // Map both time boundaries independently so pixel rounding cannot
-            // leave a one-pixel gap when the view reaches either track edge.
-            int thumb_left = (int)round(
-                inner_width * this->view_start / this->duration
+            // Keep the thumb width independent of its horizontal position.
+            // Rounding both time boundaries separately made the width change by
+            // one pixel while dragging, which caused the thumb to spring.
+            int thumb_width = (int)round(
+                inner_width * this->view_duration / this->duration
             );
-            int thumb_right = (int)round(
-                inner_width * (this->view_start + this->view_duration) /
-                this->duration
-            );
-            if (at_start) {
-                thumb_left = 0;
-            }
-            if (at_end) {
-                thumb_right = inner_width;
-            }
-            thumb_left = spek_max(0, spek_min(thumb_left, inner_width));
-            thumb_right = spek_max(
-                thumb_left, spek_min(thumb_right, inner_width)
-            );
-
-            int thumb_width = thumb_right - thumb_left;
             const int min_thumb_width = spek_min(FromDIP(3), inner_width);
-            thumb_width = spek_max(min_thumb_width, thumb_width);
-            if (at_start) {
-                thumb_left = 0;
-            } else if (at_end) {
-                thumb_left = inner_width - thumb_width;
-            } else {
-                thumb_left = spek_max(
-                    0, spek_min(thumb_left, inner_width - thumb_width)
-                );
-            }
+            thumb_width = spek_max(
+                min_thumb_width, spek_min(thumb_width, inner_width)
+            );
+
+            // Map the legal start-time range to the thumb's available travel.
+            // This makes both track endpoints exact and keeps drag geometry stable.
+            const int travel = inner_width - thumb_width;
+            const double position = max_start > 0.0
+                ? spek_max(0.0, spek_min(this->view_start / max_start, 1.0))
+                : 0.0;
+            const int thumb_left = (int)round(position * travel);
             int thumb_x = overview_x + 1 + thumb_left;
             this->overview_x = overview_x;
             this->overview_y = overview_y;
