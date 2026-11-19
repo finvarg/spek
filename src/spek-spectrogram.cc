@@ -394,7 +394,7 @@ void SpekSpectrogram::on_have_sample(SpekHaveSampleEvent& event)
     const float *values = event.get_values();
     if (sample == 0 && values) {
         std::fprintf(stderr,
-            "Spek diagnostic: UI received sample 0, bands=%d, bins[0]=%g, bins[mid]=%g\\n",
+            "Spek diagnostic: UI received sample 0, bands=%d, bins[0]=%g, bins[mid]=%g\n",
             bands, values[0], values[bands / 2]);
     }
 
@@ -650,7 +650,7 @@ static void pipeline_cb(int bands, int sample, float *values, void *cb_data)
 {
     if (sample == 0 && values) {
         std::fprintf(stderr,
-            "Spek diagnostic: pipeline sample 0, bands=%d, bins[0]=%g, bins[mid]=%g\\n",
+            "Spek diagnostic: pipeline sample 0, bands=%d, bins[0]=%g, bins[mid]=%g\n",
             bands, values[0], values[bands / 2]);
     }
     SpekHaveSampleEvent event(bands, sample, values, false);
