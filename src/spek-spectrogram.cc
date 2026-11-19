@@ -293,9 +293,6 @@ void SpekSpectrogram::on_left_down(wxMouseEvent& event)
 void SpekSpectrogram::on_left_up(wxMouseEvent& event)
 {
     if (this->overview_dragging) {
-        // Apply the release coordinate too: wx may not deliver a final motion
-        // event when the pointer reaches the minimap's rightmost pixel.
-        set_overview_position(event.GetX());
         this->overview_dragging = false;
         if (HasCapture()) {
             ReleaseMouse();
@@ -572,15 +569,22 @@ void SpekSpectrogram::render(wxDC& dc)
             this->overview_thumb_width = thumb_width;
 
             // Temporary diagnostic marker for the custom build.
-            dc.SetPen(wxPen(wxColour(255, 0, 0), FromDIP(1)));
+            dc.SetPen(wxPen(wxColour(0, 255, 255), FromDIP(1)));
             dc.SetBrush(wxBrush(wxColour(16, 16, 16)));
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
             dc.SetPen(wxPen(wxColour(245, 245, 245)));
             dc.SetBrush(wxBrush(wxColour(245, 245, 245)));
             dc.DrawRectangle(
-                thumb_x, overview_y + 1, thumb_width, inner_height
+                thumb_x, overview_y + 1,
+                thumb_width + (at_end ? 1 : 0), inner_height
             );
+
+            // Redraw the outline over the thumb so the viewport meets the
+            // right border cleanly despite wxDC rectangle edge conventions.
+            dc.SetPen(wxPen(wxColour(0, 255, 255), FromDIP(1)));
+            dc.SetBrush(*wxTRANSPARENT_BRUSH);
+            dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
             dc.SetFont(small_font);
             int label_width = dc.GetTextExtent(zoom_label).GetWidth();
