@@ -552,7 +552,6 @@ void SpekSpectrogram::render(wxDC& dc)
                 ? spek_max(0.0, spek_min(this->view_start / max_start, 1.0))
                 : 0.0;
             const int thumb_left = (int)round(position * travel);
-            const int thumb_right = thumb_left + thumb_width;
             int thumb_x = overview_x + 1 + thumb_left;
             this->overview_x = overview_x;
             this->overview_y = overview_y;
