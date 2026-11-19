@@ -527,9 +527,10 @@ void SpekSpectrogram::render(wxDC& dc)
             const int inner_width = overview_width - 2;
             const int inner_height = overview_height - 2;
             const double max_start = this->duration - this->view_duration;
+            // Treat sub-pixel offsets as touching an edge. This keeps the
+            // overview thumb flush with the frame despite time/pixel rounding.
             const double edge_tolerance =
-                8.0 * std::numeric_limits<double>::epsilon() *
-                spek_max(1.0, this->duration);
+                0.5 * this->duration / inner_width;
             const bool at_start = this->view_start <= edge_tolerance;
             const bool at_end = max_start - this->view_start <= edge_tolerance;
 
@@ -542,6 +543,12 @@ void SpekSpectrogram::render(wxDC& dc)
                 inner_width * (this->view_start + this->view_duration) /
                 this->duration
             );
+            if (at_start) {
+                thumb_left = 0;
+            }
+            if (at_end) {
+                thumb_right = inner_width;
+            }
             thumb_left = spek_max(0, spek_min(thumb_left, inner_width));
             thumb_right = spek_max(
                 thumb_left, spek_min(thumb_right, inner_width)
@@ -572,19 +579,10 @@ void SpekSpectrogram::render(wxDC& dc)
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
             dc.SetPen(wxPen(wxColour(245, 245, 245)));
-            if (thumb_width == inner_width) {
-                // At 1.0x the viewport covers the whole track. Keep it outlined
-                // so the overview remains a visible control instead of a solid bar.
-                dc.SetBrush(*wxTRANSPARENT_BRUSH);
-                dc.DrawRectangle(
-                    thumb_x, overview_y + 1, thumb_width, inner_height
-                );
-            } else {
-                dc.SetBrush(wxBrush(wxColour(245, 245, 245)));
-                dc.DrawRectangle(
-                    thumb_x, overview_y + 1, thumb_width, inner_height
-                );
-            }
+            dc.SetBrush(wxBrush(wxColour(245, 245, 245)));
+            dc.DrawRectangle(
+                thumb_x, overview_y + 1, thumb_width, inner_height
+            );
 
             dc.SetFont(small_font);
             int label_width = dc.GetTextExtent(zoom_label).GetWidth();
