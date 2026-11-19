@@ -577,7 +577,8 @@ void SpekSpectrogram::render(wxDC& dc)
             this->overview_thumb_x = thumb_x;
             this->overview_thumb_width = thumb_width;
 
-            dc.SetPen(wxPen(wxColour(200, 200, 200)));
+            // Temporary diagnostic marker for the custom build.
+            dc.SetPen(wxPen(wxColour(255, 0, 0), FromDIP(1)));
             dc.SetBrush(wxBrush(wxColour(16, 16, 16)));
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
@@ -652,8 +653,8 @@ void SpekSpectrogram::render(wxDC& dc)
         }
     }
 
-    // Temporary diagnostic marker for the custom Windows build.
-    dc.SetPen(wxPen(wxColour(255, 0, 0), FromDIP(2)));
+    // Border around the spectrogram.
+    dc.SetPen(*wxWHITE_PEN);
     dc.SetBrush(*wxTRANSPARENT_BRUSH);
     dc.DrawRectangle(LPAD, TPAD, w - LPAD - RPAD, h - TPAD - BPAD);
 
