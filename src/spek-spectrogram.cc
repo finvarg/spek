@@ -496,7 +496,7 @@ void SpekSpectrogram::render(wxDC& dc)
         const bool show_overview =
             this->duration > 0.0 && this->view_duration > 0.0 &&
             plot_width >= overview_width + FromDIP(120);
-        const int overview_x = w - RPAD - GAP - overview_width;
+        const int overview_x = w - RPAD - overview_width;
         const int overview_y =
             TPAD - GAP - small_height - overview_height - FromDIP(2);
 
