@@ -15,6 +15,8 @@ BEGIN_EVENT_TABLE(SpekSpectrogram, wxWindow)
     EVT_CHAR(SpekSpectrogram::on_char)
     EVT_PAINT(SpekSpectrogram::on_paint)
     EVT_SIZE(SpekSpectrogram::on_size)
+    EVT_MOUSEWHEEL(SpekSpectrogram::on_mouse_wheel)
+    EVT_LEFT_DCLICK(SpekSpectrogram::on_left_dclick)
     SPEK_EVT_HAVE_SAMPLE(SpekSpectrogram::on_have_sample)
 END_EVENT_TABLE()
 
@@ -47,6 +49,8 @@ SpekSpectrogram::SpekSpectrogram(wxFrame *parent) :
     channel(0),
     window_function(WINDOW_DEFAULT),
     duration(0.0),
+    view_start(0.0),
+    view_duration(0.0),
     sample_rate(0),
     palette(PALETTE_DEFAULT),
     palette_image(),
@@ -76,6 +80,8 @@ SpekSpectrogram::~SpekSpectrogram()
 void SpekSpectrogram::open(const wxString& path)
 {
     this->path = path;
+    this->view_start = 0.0;
+    this->view_duration = 0.0;
     this->stream = 0;
     this->channel = 0;
     start();
@@ -128,11 +134,15 @@ void SpekSpectrogram::on_char(wxKeyEvent& evt)
     case 's':
         if (this->streams) {
             this->stream = (this->stream + 1) % this->streams;
+            this->view_start = 0.0;
+            this->view_duration = 0.0;
         }
         break;
     case 'S':
         if (this->streams) {
             this->stream = (this->stream - 1 + this->streams) % this->streams;
+            this->view_start = 0.0;
+            this->view_duration = 0.0;
         }
         break;
     case 'u':
@@ -172,6 +182,65 @@ void SpekSpectrogram::on_size(wxSizeEvent&)
 
     if (width_changed) {
         start();
+    }
+}
+
+void SpekSpectrogram::on_mouse_wheel(wxMouseEvent& event)
+{
+    if (this->duration <= 0.0 || this->view_duration <= 0.0) {
+        event.Skip();
+        return;
+    }
+
+    wxPoint point = event.GetPosition();
+    int plot_width = GetClientSize().GetWidth() - LPAD - RPAD;
+    if (plot_width <= 0 || point.x < LPAD || point.x > LPAD + plot_width ||
+        point.y < TPAD || point.y > GetClientSize().GetHeight() - BPAD) {
+        event.Skip();
+        return;
+    }
+
+    double notches = event.GetWheelRotation() / (double)event.GetWheelDelta();
+    if (notches == 0.0) {
+        event.Skip();
+        return;
+    }
+
+    if (event.ShiftDown()) {
+        this->view_start -= notches * this->view_duration * 0.15;
+    } else {
+        const double fraction = (point.x - LPAD) / (double)plot_width;
+        const double anchor = this->view_start + fraction * this->view_duration;
+        const double next_duration = spek_min(
+            this->duration,
+            spek_max(1.0, this->view_duration * pow(2.0, -notches))
+        );
+        this->view_start = anchor - fraction * next_duration;
+        this->view_duration = next_duration;
+    }
+
+    if (this->view_duration >= this->duration) {
+        this->view_start = 0.0;
+        this->view_duration = this->duration;
+    } else {
+        this->view_start = spek_max(
+            0.0, spek_min(this->view_start, this->duration - this->view_duration)
+        );
+    }
+
+    start();
+    Refresh();
+}
+
+void SpekSpectrogram::on_left_dclick(wxMouseEvent& event)
+{
+    wxPoint point = event.GetPosition();
+    int plot_width = GetClientSize().GetWidth() - LPAD - RPAD;
+    if (point.x >= LPAD && point.x <= LPAD + plot_width && this->duration > 0.0) {
+        this->view_start = 0.0;
+        this->view_duration = this->duration;
+        start();
+        Refresh();
     }
 }
 
@@ -305,11 +374,12 @@ void SpekSpectrogram::render(wxDC& dc)
                 // TODO: i18n
                 "00:00",
                 time_factors,
-                0,
-                (int)this->duration,
+                (int)floor(this->view_start),
+                (int)ceil(this->view_start + this->view_duration),
                 1.5,
-                (w - LPAD - RPAD) / this->duration,
-                0.0,
+                (w - LPAD - RPAD) / this->view_duration,
+                (floor(this->view_start) - this->view_start) *
+                    (w - LPAD - RPAD) / this->view_duration,
                 time_formatter
                 );
             time_ruler.draw(dc);
@@ -397,16 +467,26 @@ void SpekSpectrogram::start()
             this->channel,
             this->window_function,
             samples,
+            this->view_start,
+            this->view_duration,
             pipeline_cb,
             this
         );
-        spek_pipeline_start(this->pipeline);
         // TODO: extract conversion into a utility function.
         this->desc = wxString::FromUTF8(spek_pipeline_desc(this->pipeline).c_str());
         this->streams = spek_pipeline_streams(this->pipeline);
         this->channels = spek_pipeline_channels(this->pipeline);
         this->duration = spek_pipeline_duration(this->pipeline);
         this->sample_rate = spek_pipeline_sample_rate(this->pipeline);
+        if (this->view_duration <= 0.0 || this->view_duration > this->duration) {
+            this->view_start = 0.0;
+            this->view_duration = this->duration;
+        } else {
+            this->view_start = spek_max(
+                0.0, spek_min(this->view_start, this->duration - this->view_duration)
+            );
+        }
+        spek_pipeline_start(this->pipeline);
     } else {
         this->image.Create(1, 1);
     }

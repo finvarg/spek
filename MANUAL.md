@@ -47,6 +47,11 @@ On OS X use the Command key instead of Ctrl.
 
 ## Spectrogram
 
+The mouse wheel zooms the time axis around the pointer. Hold Shift while using
+the mouse wheel to pan horizontally. Double-click the time axis to show the full
+track again.
+
+
 `c`, `C`
 :   Change the audio channel.
 
