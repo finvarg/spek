@@ -582,6 +582,17 @@ void SpekSpectrogram::render(wxDC& dc)
             dc.DrawRectangle(
                 thumb_x, overview_y + 1, thumb_width, inner_height
             );
+            // wxDC rectangle edge rounding can leave the final interior pixel
+            // dark when the thumb reaches the right endpoint. Fill that pixel
+            // without changing the thumb's stored width or drag geometry.
+            if (thumb_right >= inner_width - 1) {
+                dc.DrawLine(
+                    overview_x + overview_width - 2,
+                    overview_y + 1,
+                    overview_x + overview_width - 2,
+                    overview_y + overview_height - 2
+                );
+            }
 
             dc.SetFont(small_font);
             int label_width = dc.GetTextExtent(zoom_label).GetWidth();
