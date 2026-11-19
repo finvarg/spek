@@ -572,7 +572,7 @@ void SpekSpectrogram::render(wxDC& dc)
             this->overview_thumb_width = thumb_width;
 
             // Temporary diagnostic marker for the custom build.
-            dc.SetPen(wxPen(wxColour(128, 255, 0), FromDIP(1)));
+            dc.SetPen(wxPen(wxColour(255, 0, 0), FromDIP(1)));
             dc.SetBrush(wxBrush(wxColour(16, 16, 16)));
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
@@ -590,18 +590,6 @@ void SpekSpectrogram::render(wxDC& dc)
                 overview_y + overview_height + FromDIP(1)
             );
 
-            // Temporary diagnostic: compare the drawn thumb edge with its
-            // legal pixel travel and the remaining time to the track end.
-            wxString overview_debug = wxString::Format(
-                "L%d/%d  %.6fs",
-                thumb_left, travel, spek_max(0.0, max_start - this->view_start)
-            );
-            int debug_width = dc.GetTextExtent(overview_debug).GetWidth();
-            dc.DrawText(
-                overview_debug,
-                overview_x + (overview_width - debug_width) / 2,
-                overview_y + overview_height + FromDIP(1) + small_height
-            );
         }
 
         // Prepare to draw the rulers.
