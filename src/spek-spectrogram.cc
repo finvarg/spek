@@ -353,19 +353,9 @@ void SpekSpectrogram::on_motion(wxMouseEvent& event)
 void SpekSpectrogram::set_overview_position(int x)
 {
     int inner_width = this->overview_width - 2;
+    int travel = inner_width - this->overview_thumb_width;
     double max_start = this->duration - this->view_duration;
-    if (inner_width <= 0 || max_start <= 0.0 || this->duration <= 0.0) {
-        return;
-    }
-
-    int thumb_width = (int)round(
-        inner_width * this->view_duration / this->duration
-    );
-    thumb_width = spek_max(
-        spek_min(FromDIP(3), inner_width), spek_min(thumb_width, inner_width)
-    );
-    int travel = inner_width - thumb_width;
-    if (travel <= 0) {
+    if (inner_width <= 0 || travel <= 0 || max_start <= 0.0) {
         return;
     }
 
@@ -536,22 +526,45 @@ void SpekSpectrogram::render(wxDC& dc)
             const int inner_width = overview_width - 2;
             const int inner_height = overview_height - 2;
             const double max_start = this->duration - this->view_duration;
+            // Ignore only floating-point noise at the exact track edges.
+            // A pixel-sized tolerance makes the thumb jump before the drag ends.
+            const double edge_tolerance =
+                1e-9 * spek_max(1.0, this->duration);
+            const bool at_start = this->view_start <= edge_tolerance;
+            const bool at_end = max_start - this->view_start <= edge_tolerance;
 
-            // The thumb width depends only on zoom, never on its position.
-            // Map the legal start-time range to its available travel so both
-            // endpoints are exact and the drag geometry stays stable.
-            int thumb_width = (int)round(
-                inner_width * this->view_duration / this->duration
+            // Map both time boundaries independently so pixel rounding cannot
+            // leave a one-pixel gap when the view reaches either track edge.
+            int thumb_left = (int)round(
+                inner_width * this->view_start / this->duration
             );
+            int thumb_right = (int)round(
+                inner_width * (this->view_start + this->view_duration) /
+                this->duration
+            );
+            if (at_start) {
+                thumb_left = 0;
+            }
+            if (at_end) {
+                thumb_right = inner_width;
+            }
+            thumb_left = spek_max(0, spek_min(thumb_left, inner_width));
+            thumb_right = spek_max(
+                thumb_left, spek_min(thumb_right, inner_width)
+            );
+
+            int thumb_width = thumb_right - thumb_left;
             const int min_thumb_width = spek_min(FromDIP(3), inner_width);
-            thumb_width = spek_max(
-                min_thumb_width, spek_min(thumb_width, inner_width)
-            );
-            const int travel = inner_width - thumb_width;
-            const double position = max_start > 0.0
-                ? spek_max(0.0, spek_min(this->view_start / max_start, 1.0))
-                : 0.0;
-            const int thumb_left = (int)round(position * travel);
+            thumb_width = spek_max(min_thumb_width, thumb_width);
+            if (at_start) {
+                thumb_left = 0;
+            } else if (at_end) {
+                thumb_left = inner_width - thumb_width;
+            } else {
+                thumb_left = spek_max(
+                    0, spek_min(thumb_left, inner_width - thumb_width)
+                );
+            }
             int thumb_x = overview_x + 1 + thumb_left;
             this->overview_x = overview_x;
             this->overview_y = overview_y;
@@ -561,7 +574,7 @@ void SpekSpectrogram::render(wxDC& dc)
             this->overview_thumb_width = thumb_width;
 
             // Temporary diagnostic marker for the custom build.
-            dc.SetPen(wxPen(wxColour(255, 0, 0), FromDIP(1)));
+            dc.SetPen(wxPen(wxColour(0, 255, 0), FromDIP(1)));
             dc.SetBrush(wxBrush(wxColour(16, 16, 16)));
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
@@ -570,6 +583,7 @@ void SpekSpectrogram::render(wxDC& dc)
             dc.DrawRectangle(
                 thumb_x, overview_y + 1, thumb_width, inner_height
             );
+
             dc.SetFont(small_font);
             int label_width = dc.GetTextExtent(zoom_label).GetWidth();
             dc.DrawText(
@@ -625,7 +639,8 @@ void SpekSpectrogram::render(wxDC& dc)
         }
     }
 
-    // Border around the spectrogram.
+    // Border around the spectrogram. The overview thumb leaves a solid brush
+    // selected, so restore the transparent brush before drawing this rectangle.
     dc.SetPen(*wxWHITE_PEN);
     dc.SetBrush(*wxTRANSPARENT_BRUSH);
     dc.DrawRectangle(LPAD, TPAD, w - LPAD - RPAD, h - TPAD - BPAD);
