@@ -652,9 +652,8 @@ void SpekSpectrogram::render(wxDC& dc)
         }
     }
 
-    // Border around the spectrogram. The overview thumb leaves a solid brush
-    // selected, so restore the transparent brush before drawing this rectangle.
-    dc.SetPen(*wxWHITE_PEN);
+    // Temporary diagnostic marker for the custom Windows build.
+    dc.SetPen(wxPen(wxColour(255, 0, 0), FromDIP(2)));
     dc.SetBrush(*wxTRANSPARENT_BRUSH);
     dc.DrawRectangle(LPAD, TPAD, w - LPAD - RPAD, h - TPAD - BPAD);
 
