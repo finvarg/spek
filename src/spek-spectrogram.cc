@@ -1,5 +1,4 @@
 #include <cmath>
-#include <limits>
 
 #include <wx/dcbuffer.h>
 
