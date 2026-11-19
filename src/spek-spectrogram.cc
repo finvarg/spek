@@ -196,7 +196,18 @@ void SpekSpectrogram::on_size(wxSizeEvent&)
     this->prev_width = size.GetWidth();
 
     if (width_changed) {
+        const double max_start = this->duration - this->view_duration;
+        const int travel = this->overview_width - 2 - this->overview_thumb_width;
+        const bool keep_right_edge =
+            this->duration > 0.0 && this->view_duration > 0.0 &&
+            max_start > 0.0 && travel > 0 &&
+            max_start - this->view_start <= max_start / travel;
+
         start();
+        if (keep_right_edge && this->view_duration < this->duration) {
+            this->view_start = this->duration - this->view_duration;
+            Refresh();
+        }
     }
 }
 
@@ -582,7 +593,7 @@ void SpekSpectrogram::render(wxDC& dc)
             this->overview_thumb_width = thumb_width;
 
             // Temporary diagnostic marker for the custom build.
-            dc.SetPen(wxPen(wxColour(255, 255, 0), FromDIP(1)));
+            dc.SetPen(wxPen(wxColour(0, 128, 255), FromDIP(1)));
             dc.SetBrush(wxBrush(wxColour(16, 16, 16)));
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
