@@ -88,6 +88,7 @@ SpekSpectrogram::SpekSpectrogram(wxFrame *parent) :
     palette_image(),
     image(1, 1),
     prev_width(-1),
+    samples_received(0),
     fft_bits(FFT_BITS),
     urange(URANGE),
     lrange(LRANGE),
@@ -420,11 +421,16 @@ void SpekSpectrogram::on_have_sample(SpekHaveSampleEvent& event)
     }
 
     if (sample == -1) {
-        diagnostic_log("UI received pipeline finished");
+        bool saved = this->image.SaveFile("spek-image-diagnostic.png", wxBITMAP_TYPE_PNG);
+        diagnostic_log(
+            "UI finished: received=%d image=%dx%d raw_png_saved=%d",
+            this->samples_received, this->image.GetWidth(), this->image.GetHeight(), saved
+        );
         this->stop();
         return;
     }
 
+    this->samples_received++;
     // TODO: check image size, quit if wrong.
     double range = this->urange - this->lrange;
     for (int y = 0; y < bands; y++) {
@@ -696,6 +702,7 @@ void SpekSpectrogram::start()
     wxSize size = GetClientSize();
     int samples = size.GetWidth() - LPAD - RPAD;
     if (samples > 0) {
+        this->samples_received = 0;
         this->image.Create(samples, bits_to_bands(this->fft_bits));
         this->pipeline = spek_pipeline_open(
             this->audio->open(std::string(this->path.utf8_str()), this->stream),
