@@ -531,44 +531,34 @@ void SpekSpectrogram::render(wxDC& dc)
             const int inner_width = overview_width - 2;
             const int inner_height = overview_height - 2;
             const double max_start = this->duration - this->view_duration;
-            // Ignore only floating-point noise at the exact track edges.
-            // A pixel-sized tolerance makes the thumb jump before the drag ends.
             const double edge_tolerance =
                 1e-9 * spek_max(1.0, this->duration);
             const bool at_start = this->view_start <= edge_tolerance;
             const bool at_end = max_start - this->view_start <= edge_tolerance;
 
-            // Map both time boundaries independently so pixel rounding cannot
-            // leave a one-pixel gap when the view reaches either track edge.
-            int thumb_left = (int)round(
-                inner_width * this->view_start / this->duration
-            );
-            int thumb_right = (int)round(
-                inner_width * (this->view_start + this->view_duration) /
-                this->duration
-            );
-            if (at_start) {
-                thumb_left = 0;
-            }
-            if (at_end) {
-                thumb_right = inner_width;
-            }
-            thumb_left = spek_max(0, spek_min(thumb_left, inner_width));
-            thumb_right = spek_max(
-                thumb_left, spek_min(thumb_right, inner_width)
-            );
-
-            int thumb_width = thumb_right - thumb_left;
+            // Keep the thumb width independent of its position. The drag
+            // mapping uses this same width to calculate its available travel.
             const int min_thumb_width = spek_min(FromDIP(3), inner_width);
-            thumb_width = spek_max(min_thumb_width, thumb_width);
+            int thumb_width = (int)round(
+                inner_width * this->view_duration / this->duration
+            );
+            thumb_width = spek_max(
+                min_thumb_width, spek_min(thumb_width, inner_width)
+            );
+            if (max_start > 0.0 && inner_width > 1) {
+                thumb_width = spek_min(thumb_width, inner_width - 1);
+            }
+
+            const int travel = inner_width - thumb_width;
+            int thumb_left = max_start > 0.0
+                ? (int)round(travel * this->view_start / max_start)
+                : 0;
             if (at_start) {
                 thumb_left = 0;
             } else if (at_end) {
-                thumb_left = inner_width - thumb_width;
+                thumb_left = travel;
             } else {
-                thumb_left = spek_max(
-                    0, spek_min(thumb_left, inner_width - thumb_width)
-                );
+                thumb_left = spek_max(0, spek_min(thumb_left, travel));
             }
             int thumb_x = overview_x + 1 + thumb_left;
             this->overview_x = overview_x;
@@ -579,7 +569,7 @@ void SpekSpectrogram::render(wxDC& dc)
             this->overview_thumb_width = thumb_width;
 
             // Temporary diagnostic marker for the custom build.
-            dc.SetPen(wxPen(wxColour(0, 128, 255), FromDIP(1)));
+            dc.SetPen(wxPen(wxColour(255, 128, 0), FromDIP(1)));
             dc.SetBrush(wxBrush(wxColour(16, 16, 16)));
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
