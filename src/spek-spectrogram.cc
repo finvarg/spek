@@ -195,25 +195,26 @@ void SpekSpectrogram::on_size(wxSizeEvent&)
     bool width_changed = this->prev_width != size.GetWidth();
     this->prev_width = size.GetWidth();
 
-    if (width_changed) {
-        const double max_start = this->duration - this->view_duration;
-        const int travel = this->overview_width - 2 - this->overview_thumb_width;
-        const bool can_snap_edge =
-            this->duration > 0.0 && this->view_duration > 0.0 &&
-            max_start > 0.0 && travel > 0;
-        const bool keep_left_edge =
-            can_snap_edge && this->view_start <= max_start / travel;
-        const bool keep_right_edge =
-            can_snap_edge &&
-            max_start - this->view_start <= max_start / travel;
+    const double max_start = this->duration - this->view_duration;
+    const int travel = this->overview_width - 2 - this->overview_thumb_width;
+    const bool can_snap_edge =
+        this->duration > 0.0 && this->view_duration > 0.0 &&
+        max_start > 0.0 && travel > 0;
+    const bool keep_left_edge =
+        can_snap_edge && this->view_start <= max_start / travel;
+    const bool keep_right_edge =
+        can_snap_edge &&
+        max_start - this->view_start <= max_start / travel;
 
+    if (width_changed) {
         start();
-        if (this->view_duration < this->duration &&
-            (keep_left_edge || keep_right_edge)) {
-            this->view_start = keep_left_edge
-                ? 0.0 : this->duration - this->view_duration;
-            Refresh();
-        }
+    }
+
+    if (this->view_duration < this->duration &&
+        (keep_left_edge || keep_right_edge)) {
+        this->view_start = keep_left_edge
+            ? 0.0 : this->duration - this->view_duration;
+        Refresh();
     }
 }
 
@@ -599,7 +600,7 @@ void SpekSpectrogram::render(wxDC& dc)
             this->overview_thumb_width = thumb_width;
 
             // Draw the minimap outline.
-            dc.SetPen(wxPen(wxColour(255, 0, 128), FromDIP(1)));
+            dc.SetPen(wxPen(wxColour(255, 255, 255), FromDIP(1)));
             dc.SetBrush(wxBrush(wxColour(16, 16, 16)));
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
@@ -612,7 +613,7 @@ void SpekSpectrogram::render(wxDC& dc)
 
             // Redraw the outline over the thumb so the viewport meets the
             // right border cleanly despite wxDC rectangle edge conventions.
-            dc.SetPen(wxPen(wxColour(255, 0, 128), FromDIP(1)));
+            dc.SetPen(wxPen(wxColour(255, 255, 255), FromDIP(1)));
             dc.SetBrush(*wxTRANSPARENT_BRUSH);
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
