@@ -526,10 +526,10 @@ void SpekSpectrogram::render(wxDC& dc)
             const int inner_width = overview_width - 2;
             const int inner_height = overview_height - 2;
             const double max_start = this->duration - this->view_duration;
-            // Treat sub-pixel offsets as touching an edge. This keeps the
-            // overview thumb flush with the frame despite time/pixel rounding.
+            // Snap offsets smaller than one overview pixel to the edge.
+            // This matches the thumb's pixel resolution and avoids a one-pixel gap.
             const double edge_tolerance =
-                0.5 * this->duration / inner_width;
+                this->duration / inner_width;
             const bool at_start = this->view_start <= edge_tolerance;
             const bool at_end = max_start - this->view_start <= edge_tolerance;
 
