@@ -293,6 +293,16 @@ void SpekSpectrogram::on_left_down(wxMouseEvent& event)
 void SpekSpectrogram::on_left_up(wxMouseEvent& event)
 {
     if (this->overview_dragging) {
+        // Apply the final pointer position before ending the drag.
+        set_overview_position(event.GetX());
+
+        // Preserve an intentional right-edge landing across start(), which
+        // reopens the audio pipeline and re-clamps view_start.
+        const int thumb_right = this->overview_thumb_x + this->overview_thumb_width;
+        const int track_right = this->overview_x + this->overview_width - 1;
+        const bool finish_at_right_edge =
+            this->overview_width > 0 && track_right - thumb_right <= 1;
+
         this->overview_dragging = false;
         if (HasCapture()) {
             ReleaseMouse();
@@ -300,6 +310,9 @@ void SpekSpectrogram::on_left_up(wxMouseEvent& event)
         SetCursor(wxCursor(wxCURSOR_ARROW));
         this->drag_offset_x = 0;
         start();
+        if (finish_at_right_edge && this->view_duration < this->duration) {
+            this->view_start = this->duration - this->view_duration;
+        }
         Refresh();
         return;
     }
@@ -569,7 +582,7 @@ void SpekSpectrogram::render(wxDC& dc)
             this->overview_thumb_width = thumb_width;
 
             // Temporary diagnostic marker for the custom build.
-            dc.SetPen(wxPen(wxColour(0, 255, 255), FromDIP(1)));
+            dc.SetPen(wxPen(wxColour(255, 255, 0), FromDIP(1)));
             dc.SetBrush(wxBrush(wxColour(16, 16, 16)));
             dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
 
