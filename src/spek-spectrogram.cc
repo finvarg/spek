@@ -422,21 +422,71 @@ void SpekSpectrogram::render(wxDC& dc)
         dc.DrawBitmap(bmp, LPAD + this->drag_offset_x, TPAD);
         dc.DestroyClippingRegion();
 
+        const int plot_width = w - LPAD - RPAD;
+        const int overview_width = FromDIP(90);
+        const int overview_height = FromDIP(8);
+        const bool show_overview =
+            this->duration > 0.0 && this->view_duration > 0.0 &&
+            plot_width >= overview_width + FromDIP(120);
+        const int overview_x = w - RPAD - GAP - overview_width;
+        const int overview_y =
+            TPAD - GAP - small_height - overview_height - FromDIP(2);
+
         // File name.
         dc.SetFont(large_font);
         dc.DrawText(
-            trim(dc, this->path, w - LPAD - RPAD, false),
+            trim(dc, this->path, plot_width, false),
             LPAD,
             TPAD - 2 * GAP - normal_height - large_height
         );
 
         // File properties.
         dc.SetFont(normal_font);
+        int desc_width = show_overview ? overview_x - LPAD - GAP : plot_width;
         dc.DrawText(
-            trim(dc, this->desc, w - LPAD - RPAD, true),
+            trim(dc, this->desc, desc_width, true),
             LPAD,
             TPAD - GAP - normal_height
         );
+
+        if (show_overview) {
+            int zoom_tenths = (int)round(10.0 * this->duration / this->view_duration);
+            wxString zoom_label = wxString::Format(
+                "%d.%dx", zoom_tenths / 10, zoom_tenths % 10
+            );
+
+            const int inner_width = overview_width - 2;
+            const int inner_height = overview_height - 2;
+            int thumb_width = (int)round(
+                inner_width * this->view_duration / this->duration
+            );
+            thumb_width = spek_max(FromDIP(3), spek_min(thumb_width, inner_width));
+
+            double max_start = this->duration - this->view_duration;
+            double position = max_start > 0.0 ?
+                this->view_start / max_start : 0.0;
+            int thumb_x = overview_x + 1 + (int)round(
+                position * (inner_width - thumb_width)
+            );
+
+            dc.SetPen(wxPen(wxColour(200, 200, 200)));
+            dc.SetBrush(wxBrush(wxColour(16, 16, 16)));
+            dc.DrawRectangle(overview_x, overview_y, overview_width, overview_height);
+
+            dc.SetPen(wxPen(wxColour(245, 245, 245)));
+            dc.SetBrush(wxBrush(wxColour(245, 245, 245)));
+            dc.DrawRectangle(
+                thumb_x, overview_y + 1, thumb_width, inner_height
+            );
+
+            dc.SetFont(small_font);
+            int label_width = dc.GetTextExtent(zoom_label).GetWidth();
+            dc.DrawText(
+                zoom_label,
+                overview_x + (overview_width - label_width) / 2,
+                overview_y + overview_height + FromDIP(1)
+            );
+        }
 
         // Prepare to draw the rulers.
         dc.SetFont(small_font);
