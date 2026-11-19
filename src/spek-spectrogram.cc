@@ -1,4 +1,5 @@
 #include <cmath>
+#include <limits>
 
 #include <wx/dcbuffer.h>
 
@@ -525,17 +526,40 @@ void SpekSpectrogram::render(wxDC& dc)
 
             const int inner_width = overview_width - 2;
             const int inner_height = overview_height - 2;
-            int thumb_width = (int)round(
-                inner_width * this->view_duration / this->duration
-            );
-            thumb_width = spek_max(FromDIP(3), spek_min(thumb_width, inner_width));
+            const double max_start = this->duration - this->view_duration;
+            const double edge_tolerance =
+                8.0 * std::numeric_limits<double>::epsilon() *
+                spek_max(1.0, this->duration);
+            const bool at_start = this->view_start <= edge_tolerance;
+            const bool at_end = max_start - this->view_start <= edge_tolerance;
 
-            double max_start = this->duration - this->view_duration;
-            double position = max_start > 0.0 ?
-                this->view_start / max_start : 0.0;
-            int thumb_x = overview_x + 1 + (int)round(
-                position * (inner_width - thumb_width)
+            // Map both time boundaries independently so pixel rounding cannot
+            // leave a one-pixel gap when the view reaches either track edge.
+            int thumb_left = (int)round(
+                inner_width * this->view_start / this->duration
             );
+            int thumb_right = (int)round(
+                inner_width * (this->view_start + this->view_duration) /
+                this->duration
+            );
+            thumb_left = spek_max(0, spek_min(thumb_left, inner_width));
+            thumb_right = spek_max(
+                thumb_left, spek_min(thumb_right, inner_width)
+            );
+
+            int thumb_width = thumb_right - thumb_left;
+            const int min_thumb_width = spek_min(FromDIP(3), inner_width);
+            thumb_width = spek_max(min_thumb_width, thumb_width);
+            if (at_start) {
+                thumb_left = 0;
+            } else if (at_end) {
+                thumb_left = inner_width - thumb_width;
+            } else {
+                thumb_left = spek_max(
+                    0, spek_min(thumb_left, inner_width - thumb_width)
+                );
+            }
+            int thumb_x = overview_x + 1 + thumb_left;
             this->overview_x = overview_x;
             this->overview_y = overview_y;
             this->overview_width = overview_width;
